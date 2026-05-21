@@ -1,91 +1,71 @@
-# GP-OYUN: Master Transition Tables
+# GP-OYUN: Master State Logic (A1 Level)
 
-This document serves as the final technical authority for state transitions across all game systems.
+This document serves as the technical authority for how state changes across the A1 game systems. Instead of complex, dedicated Finite State Machine classes, we rely on basic `switch` statements and `if/else` condition checking inside Unity's `Update()` loop.
 
 ---
 
-## 1. Local Time & Day Cycle FSM
+## 1. Local Time & Day Cycle Logic
 **Manager**: `TimeManager`
-**Event**: `DayPhaseChangedEvent`
 
-| Start State | Event / Trigger | Target State | Logic / Guard |
-|---|---|---|---|
-| `NIGHT` | Timer (5s) | `MORNING` | Reset `_hasReadTodayNews` for all NPCs. |
-| `MORNING` | Timer (Config) | `MIDDAY` | Start NPC routines. |
-| `MIDDAY` | Timer (Config) | `AFTERNOON` | Peak photo value window. |
-| `AFTERNOON` | Timer (Config) | `EVENING` | Lighting shift; gossip propagation peak. |
-| `EVENING` | `NewsPublished` OR Timer | `NIGHT` | Stop all movement; process daily reputation. |
+State changes happen linearly based on a single float variable (`currentHour`).
 
----
-
-## 2. NPC Master Behaviour FSM
-**Manager**: `NPCStateMachine` (Physical Layer)
-
-| Start State | Event / Trigger | Target State | Logic / Guard |
-|---|---|---|---|
-| `ANY` | `NPCHighAlertState` | `IDLE` / `FLEEING` | (Override) Reset current path if threat detected. |
-| `IDLE` | `DayPhase == Morning` | `WALKING` | Wait for random stagger delay (0-15s). |
-| `WALKING` | `ArrivalAtDestination` | `IDLE` | Default behavior. |
-| `WALKING` | `ArrivalAtBoard` | `READING_NEWS` | Only if `_pendingNews != null`. |
-| `READING_NEWS` | `Timer (3-8s)` | `IDLE` | Calls `ProcessReadNews()` on exit. |
-| `IDLE` `WALKING` | `ProximityDetected` | `CONVERSING` | `random(0,1) < socialChance`. |
-| `CONVERSING` | `Timer (4-6s)` | `IDLE` | Call `TryShareNews()` halfway. |
+| Current State | Transition Condition | Next Action |
+|---|---|---|
+| `Morning` | `currentHour >= 8f` | Directly calls `NewspaperManager.Instance.PublishEdition()` |
+| `Midday` | `currentHour >= 12f` | - |
+| `Evening` | `currentHour >= 18f` | Enables streetlights. |
+| `Night` | `currentHour >= 22f` | `EditorialUI` auto-opens. |
+| `End of Day` | `currentHour >= 24f` | Reset `currentHour = 6f`, clear photos. |
 
 ---
 
-## 3. Emotion Axis FSM
-**Manager**: `EmotionStateMachine` (Internal Layer)
+## 2. NPC Master Behaviour Logic
+**Manager**: `NPCController.cs` (Switch statement in `Update()`)
 
-| Start State | Event / Trigger | Target State | Logic / Guard |
-|---|---|---|---|
-| `ANY` | `ProcessReadNews` | `Reaction` | Target emotion determined by `PersonalityData`. |
-| `IDLE` `WALKING` | `ProximityDetected` | `SOCIAL_INIT` | `random(0,1) < socialChance`. |
-| `SOCIAL_INIT` | `Acknowledge` | `GOSSIP_EXCHANGE` | Shared rotation complete. |
-| `GOSSIP_EXCHANGE`| `Success` | `SOCIAL_FAREWELL` | Call `TryShareNews()` halfway. |
-| `SOCIAL_FAREWELL`| `Timer (1s)` | `IDLE` | Resume previous task. |
-
----
-
-## 4. UI Master System FSM
-**Manager**: `UIManager`
-
-| Start State | Event / Trigger | Target State | Logic / Guard |
-|---|---|---|---|
-| `HUD_ONLY` | `Hold(C)` | `CAMERA_SYS` | Slow player movement speed. |
-| `CAMERA_SYS` | `Release(C)` | `HUD_ONLY` | Restore movement speed. |
-| `HUD_ONLY` | `OnOfficeEntry (Evening)` | `NEWSPAPER_ED` | Lock movement; open Editor. |
-| `NEWSPAPER_ED`| `ConfirmPublish` | `HUD_ONLY` | Fires `NewsPublishedEvent`. |
-| `HUD_ONLY` | `OnEscape` | `SETTINGS_MENU` | Pause game simulation. |
+| Current `NPCState` | `if` Condition / Trigger | Next `NPCState` |
+|---|---|---|
+| `Idle` | `NewspaperManager` calls `ReceiveNews()` | `WalkingToBoard` |
+| `WalkingToBoard`| `Vector3.Distance(pos, boardPos) < 0.5f` | `Reading` (starts `readTimer`) |
+| `Reading` | `readTimer <= 0` | `Reacting` (Evaluates emotion, starts `reactTimer`) |
+| `Reacting` | `reactTimer <= 0` | `WalkingHome` |
+| `WalkingHome` | `Vector3.Distance(pos, homePos) < 0.5f` | `Idle` |
 
 ---
 
-## 5. Sub-FSM: Camera & Newspaper
-| Start State | Trigger | Target State | Guard |
-|---|---|---|---|
-| **[CAMERA]** `READY` | `CaptureInput` | `SHUTTER` | `Cooldown <= 0`. |
-| **[CAMERA]** `SHUTTER`| `StoreComplete` | `COOLDOWN` | Save photo to Roll. |
-| **[EDITOR]** `SELECT` | `PhotoSelected` | `CATEGORIZE` | Roll count > 0. |
-| **[EDITOR]** `CATEGORIZED`| `Confirmed` | `HUD_ONLY` | Close UI; transition to Night. |
+## 3. UI Master System Logic
+**Manager**: Individual UI Scripts (`HUDManager`, `EditorialUI`, `SettingsController`)
+
+| UI Element | Input / Condition | Action |
+|---|---|---|
+| `HUDManager` | `Input.GetKey(C)` | Enables viewfinder `GameObject`, pulses scale. |
+| `EditorialUI` | `Input.GetKeyDown(N)` OR `Hour >= 22f` | Sets CanvasGroup alpha to 1, blocks raycasts. |
+| `EditorialUI` | Click "Publish" button | Calls `NewspaperManager.PublishEdition()`, Hides UI. |
+| `SettingsMenu`| `Input.GetKeyDown(Escape)` | Toggles CanvasGroup visibility. |
 
 ---
 
-## 6. Sub-State Machine: Settings
+## 4. Camera & Newspaper Logic
+**Manager**: `CameraController` & `NewspaperManager`
+
+| Script | Input / Condition | Action |
+|---|---|---|
+| `CameraController` | `Input.GetKeyDown(Space)` + `cooldown <= 0` | Raycasts for `PhotoSubject`, creates `PhotoData`, sends to `NewspaperManager`. |
+| `NewspaperManager` | Called by `PublishEdition()` | Iterates through `FindObjectsOfType<NPCController>()` and calls `npc.ReceiveNews()`. |
+
+---
+
+## 5. Settings Menu Logic
 **Manager**: `SettingsController`
 
-| Start State | Event / Trigger | Target State | Logic / Guard |
-|---|---|---|---|
-| `GENERAL` | `TabClick(Audio)` | `AUDIO` | Load volume sliders. |
-| `AUDIO` | `TabClick(Graphics)` | `GRAPHICS` | Load quality presets. |
-| `ANY` | `OnApply` | `GENERAL` | Commit changes to `PlayerPrefs`. |
+| Input | Action |
+|---|---|
+| Slider Value Changed (Sensitivity) | `FindObjectOfType<PlayerController>().moveSpeed = newValue;` |
+| Slider Value Changed (Volume) | `AudioListener.volume = newValue;` |
 
 ---
 
-## 6. Sub-State Machine: Notifications
-**Manager**: `NotificationQueue`
-
-| Start State | Event / Trigger | Target State | Logic / Guard |
-|---|---|---|---|
-| `IDLE` | `NewNotification` | `FADE_IN` | Pop from FIFO Queue. |
-| `FADE_IN` | `AnimComplete` | `DISPLAYING` | 2-3s duration. |
-| `DISPLAYING` | `TimerEnd` | `FADE_OUT` | Move to next in queue. |
-| `FADE_OUT` | `AnimComplete` | `IDLE` | Check if Queue is empty. |
+## Summary of A1 Transitions
+If you ever want to add a new behaviour to an NPC:
+1. Add a new name to the `NPCState` enum (e.g., `Sitting`).
+2. Add a `case NPCState.Sitting:` to the `Update()` switch statement.
+3. Write an `if` condition to transition into that state (e.g., `if (nearBench) currentState = NPCState.Sitting;`).

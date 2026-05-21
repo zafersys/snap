@@ -21,7 +21,7 @@ namespace GPOyun.Editor
         {
             if (SessionState.GetBool("GPOyun_AutoStarted", false)) return;
 
-            if (Object.FindObjectOfType<GPOyunBootstrap>() == null)
+            if (Object.FindAnyObjectByType<GPOyunBootstrap>() == null)
             {
                 bool setup = EditorUtility.DisplayDialog("GPOyun: Welcome!", 
                     "No Game Objects found in the current scene. Would you like to automatically initialize the Mediterranean Town Square and Bootstrap hierarchy?", 
@@ -39,7 +39,7 @@ namespace GPOyun.Editor
         public static void FullProjectColdStart()
         {
             // 1. Find or create the [BOOTSTRAP] object
-            GPOyunBootstrap bootstrap = Object.FindObjectOfType<GPOyunBootstrap>();
+            GPOyunBootstrap bootstrap = Object.FindAnyObjectByType<GPOyunBootstrap>();
             
             if (bootstrap == null)
             {

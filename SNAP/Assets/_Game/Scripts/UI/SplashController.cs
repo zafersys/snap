@@ -5,8 +5,7 @@ using System.Collections;
 namespace GPOyun.UI
 {
     /// <summary>
-    /// Handles the initial splash screen for 'snap'.
-    /// Displays the title and fades out when initialization is complete.
+    /// A1 Level Splash Controller
     /// </summary>
     public class SplashController : MonoBehaviour
     {
@@ -24,38 +23,16 @@ namespace GPOyun.UI
 
         private void Start()
         {
-            // Ensure the splash is visible at startup
             if (splashCanvasGroup != null)
             {
                 splashCanvasGroup.alpha = 1f;
                 splashCanvasGroup.blocksRaycasts = true;
             }
 
-            if (GPOyun.Events.EventBus.Instance != null)
-            {
-                GPOyun.Events.EventBus.Instance.Subscribe<GPOyun.Events.CoreInitializedEvent>(OnCoreInitialized);
-            }
-
-            // Safety Fallback: If for some reason the event never fires, auto-fade after 5 seconds
-            Invoke(nameof(StartFadeOut), 5f);
+            // Auto-fade after hold duration
+            Invoke(nameof(StartFadeOut), holdDuration);
         }
 
-        private void OnDestroy()
-        {
-            if (GPOyun.Events.EventBus.Instance != null)
-            {
-                GPOyun.Events.EventBus.Instance.Unsubscribe<GPOyun.Events.CoreInitializedEvent>(OnCoreInitialized);
-            }
-        }
-
-        private void OnCoreInitialized(GPOyun.Events.CoreInitializedEvent ev)
-        {
-            StartFadeOut();
-        }
-
-        /// <summary>
-        /// Triggered by the Bootstrap when systems are ready.
-        /// </summary>
         public void StartFadeOut()
         {
             StartCoroutine(FadeSequence());
@@ -63,8 +40,6 @@ namespace GPOyun.UI
 
         private IEnumerator FadeSequence()
         {
-            yield return new WaitForSeconds(holdDuration);
-
             float elapsed = 0f;
             while (elapsed < fadeDuration)
             {
@@ -83,8 +58,6 @@ namespace GPOyun.UI
             }
             
             Debug.Log("[Splash] Fade complete. World visible.");
-            
-            // Optionally Destroy to save memory
             Destroy(gameObject, 0.5f);
         }
     }

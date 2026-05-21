@@ -10,7 +10,7 @@ namespace GPOyun.Environment
     {
         [Header("Metadata")]
         public string SubjectName;
-        public GPOyun.Events.NewsCategory PrimaryCategory = GPOyun.Events.NewsCategory.Local;
+        public GPOyun.Newspaper.NewsCategory PrimaryCategory = GPOyun.Newspaper.NewsCategory.Local;
         
         [Range(0, 100)]
         public int InterestLevel = 50;

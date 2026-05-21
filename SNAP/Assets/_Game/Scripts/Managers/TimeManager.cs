@@ -1,19 +1,22 @@
 using UnityEngine;
-using GPOyun.Events;
+using GPOyun.Newspaper;
+using GPOyun.NPC;
 
 namespace GPOyun.Managers
 {
+    public enum DayPhase { Morning, Midday, Afternoon, Evening, Night }
+
     /// <summary>
-    /// Handles the Day/Night cycle and phase transitions.
-    /// Publishes DayPhaseChangedEvent when phases advance.
+    /// A1 Level Time Manager
+    /// Handles day phases and uses direct calls instead of EventBus.
     /// </summary>
     public class TimeManager : MonoBehaviour
     {
         public static TimeManager Instance { get; private set; }
 
         [Header("Settings")]
-        [SerializeField] private float phaseDurationSeconds = 120f; // 2 minutes per phase
-        [SerializeField] private bool autoAdvance = true;
+        public float phaseDurationSeconds = 120f; // 2 minutes per phase
+        public bool autoAdvance = true;
 
         public DayPhase CurrentPhase { get; private set; } = DayPhase.Morning;
         private float _phaseTimer;
@@ -27,10 +30,8 @@ namespace GPOyun.Managers
 
         private void Start()
         {
-            if (EventBus.Instance != null && TimeManager.Instance == this)
-            {
-                EventBus.Instance.Publish(new DayPhaseChangedEvent { NewPhase = CurrentPhase });
-            }
+            // Initial call
+            NotifySystemsOfPhaseChange();
         }
 
         private void Update()
@@ -38,16 +39,6 @@ namespace GPOyun.Managers
             if (!autoAdvance) return;
 
             _phaseTimer += Time.deltaTime;
-            
-            // Calculate current hour based on phase progress
-            // Each phase is 4 hours in a 5-phase cycle (6, 10, 14, 18, 22, 06)
-            // Wait, 6AM to 10PM is 4 phases of 4 hours = 16 hours. 10PM to 6AM is 1 phase of 8 hours.
-            // Let's adjust: 
-            // Morning: 06-10 (4h)
-            // Midday: 10-14 (4h)
-            // Afternoon: 14-18 (4h)
-            // Evening: 18-22 (4h)
-            // Night: 22-06 (8h)
             
             float phaseCompletion = _phaseTimer / phaseDurationSeconds;
             float phaseLengthHours = (CurrentPhase == DayPhase.Night) ? 8f : 4f;
@@ -72,8 +63,6 @@ namespace GPOyun.Managers
 
         public void AdvancePhase()
         {
-            if (EventBus.Instance == null) return;
-
             _phaseTimer = 0f;
             
             int nextPhase = ((int)CurrentPhase + 1) % 5;
@@ -81,7 +70,25 @@ namespace GPOyun.Managers
 
             Debug.Log($"[TimeManager] Hour: {GetFormattedTime()}, Phase: {CurrentPhase}");
 
-            EventBus.Instance.Publish(new DayPhaseChangedEvent { NewPhase = CurrentPhase });
+            NotifySystemsOfPhaseChange();
+        }
+
+        private void NotifySystemsOfPhaseChange()
+        {
+            // Notify Newspaper Manager directly
+            if (CurrentPhase == DayPhase.Morning && NewspaperManager.Instance != null)
+            {
+                NewspaperManager.Instance.OnMorningArrived();
+            }
+
+            // Notify all NPCs directly
+            if (NPCManager.Instance != null)
+            {
+                foreach (var npc in NPCManager.Instance.GetAll())
+                {
+                    npc.OnPhaseChanged(CurrentPhase);
+                }
+            }
         }
 
         public string GetFormattedTime()
@@ -91,7 +98,7 @@ namespace GPOyun.Managers
             return $"{hours:00}:{minutes:00}";
         }
 
-        public float GetPhaseProgress() => Mathf.Clamp01(_phaseTimer / phaseDurationSeconds);
         public float GetCurrentHour() => _currentHour;
+        public float GetPhaseProgress() => _phaseTimer / phaseDurationSeconds;
     }
 }

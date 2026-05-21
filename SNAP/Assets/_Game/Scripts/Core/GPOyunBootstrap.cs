@@ -1,293 +1,467 @@
 using UnityEngine;
-using GPOyun.Events;
 using GPOyun.Managers;
 using GPOyun.Newspaper;
+using GPOyun.NPC;
 using GPOyun.Environment;
+using GPOyun.UI;
 using GPOyun.Player;
 using GPOyun.CameraSystem;
-using GPOyun.NPC;
-using GPOyun.UI;
-using GPOyun;
 
 namespace GPOyun.Core
 {
     /// <summary>
-    /// The entry point and safety net for the GP-OYUN project.
-    /// Ensures all managers exist and are initialized in the correct order.
-    /// Also provides automation buttons for Unity Editor setup.
+    /// Entry point for the entire game scene.
+    /// Spawns all managers, builds the town, creates the player and camera,
+    /// and initialises the HUD / UI stack. 
+    /// Invoked automatically by GPOyunEditorTools on first load OR by pressing Play.
     /// </summary>
     public class GPOyunBootstrap : MonoBehaviour
     {
-        [Header("UI References")]
-        [SerializeField] private SplashController splashController;
-
-        [Header("Manager Prefabs (Optional)")]
-        [SerializeField] private GameObject eventBusPrefab;
-        [SerializeField] private GameObject timeManagerPrefab;
-        [SerializeField] private GameObject newspaperManagerPrefab;
-
-        private void Awake()
-        {
-            #if UNITY_EDITOR
-            // Automated Cold Start for first-time use
-            if (GameObject.Find("[CORE]") == null) SetupHierarchy();
-            var builder = FindAnyObjectByType<TownSquareBuilder>();
-            if (builder != null && builder.transform.childCount == 0) builder.Build();
-            #endif
-
-            VerifyManagers();
-        }
-
         private void Start()
         {
-            if (EventBus.Instance != null)
+            // If managers were already built in-editor via the menu tool,
+            // they will already exist in the scene — don't build twice.
+            if (FindAnyObjectByType<TimeManager>() == null)
             {
-                Debug.Log("[Bootstrap] Publishing CoreInitializedEvent...");
-                EventBus.Instance.Publish(new CoreInitializedEvent());
-            }
-        }
-
-        public void VerifyManagers()
-        {
-            Debug.Log("[Bootstrap] Verifying core systems...");
-
-            if (EventBus.Instance == null) CreateManager<EventBus>("EventBus", eventBusPrefab);
-            if (TimeManager.Instance == null) CreateManager<TimeManager>("TimeManager", timeManagerPrefab);
-            if (NewspaperManager.Instance == null) CreateManager<NewspaperManager>("NewspaperManager", newspaperManagerPrefab);
-
-            Debug.Log("[Bootstrap] All systems online.");
-        }
-
-        private void CreateManager<T>(string name, GameObject prefab) where T : MonoBehaviour
-        {
-            if (prefab != null)
-            {
-                Instantiate(prefab);
+                NuclearColdStart();
             }
             else
             {
-                GameObject go = new GameObject(name);
-                go.AddComponent<T>();
-                Debug.LogWarning($"[Bootstrap] {name} was missing! Created a default one.");
+                Debug.Log("[Bootstrap] World already built (editor). Skipping cold start.");
+                EnsureUIStackExists();
             }
         }
-        #if UNITY_EDITOR
-        [ContextMenu("Project Setup: Create Folders")]
-        public void SetupFolders()
+
+        private void EnsureUIStackExists()
         {
-            // Use Path.Combine to build the subfolder strings safely for both Mac and Windows
-            string[] folders = {
-                "_Game",
-                System.IO.Path.Combine("_Game", "Prefabs"),
-                System.IO.Path.Combine("_Game", "Materials"),
-                System.IO.Path.Combine("_Game", "Scenes"),
-                System.IO.Path.Combine("_Game", "Scripts")
-            };
-
-            foreach (string folder in folders)
+            // Ensure CameraController exists on the Main Camera so viewfinder/capture functions perfectly!
+            var activeCam = Camera.main;
+            if (activeCam == null)
             {
-                // Combine the base data path with the now safely-formatted folder path
-                string path = System.IO.Path.Combine(UnityEngine.Application.dataPath, folder);
-
-                if (!System.IO.Directory.Exists(path))
-                {
-                    System.IO.Directory.CreateDirectory(path);
-                    UnityEngine.Debug.Log($"Created folder: {folder}");
-                }
+                var allCams = Object.FindObjectsByType<Camera>();
+                if (allCams.Length > 0) activeCam = allCams[0];
+            }
+            if (activeCam != null && activeCam.GetComponent<CameraController>() == null)
+            {
+                activeCam.gameObject.AddComponent<CameraController>();
+                Debug.Log("[Bootstrap] Self-healed: Added missing CameraController to Main Camera.");
             }
 
-            UnityEditor.AssetDatabase.Refresh();
-        }
-        [ContextMenu("Scene Setup: Create Hierarchy")]
-        public void SetupHierarchy()
-        {
-            GameObject core = GameObject.Find("[CORE]") ?? new GameObject("[CORE]");
-            GameObject ui = GameObject.Find("[UI]") ?? new GameObject("[UI]");
-
-            if (FindAnyObjectByType<GPOyunBootstrap>() == null)
+            GameObject uiRoot = GameObject.Find("[UI]");
+            if (uiRoot == null)
             {
-                new GameObject("[BOOTSTRAP]").AddComponent<GPOyunBootstrap>();
+                uiRoot = new GameObject("[UI]");
+                DontDestroyOnLoad(uiRoot);
             }
 
-            CheckAndAdd<EventBus>(core, "EventBus");
-            CheckAndAdd<TimeManager>(core, "TimeManager");
-            CheckAndAdd<NewspaperManager>(core, "NewspaperManager");
+            // Ensure Splash
+            if (Object.FindAnyObjectByType<SplashController>() == null)
+            {
+                var splashGo = new GameObject("SplashController");
+                splashGo.transform.SetParent(uiRoot.transform);
+                var splash = splashGo.AddComponent<SplashController>();
+                VisualUtils.SetupMockSplash(splash);
+            }
 
-            CheckAndAdd<SplashController>(ui, "SplashScreen");
-            CheckAndAdd<SettingsController>(ui, "SettingsScreen");
+            // Ensure HUD
+            var hud = Object.FindAnyObjectByType<HUDManager>();
+            if (hud == null)
+            {
+                var hudGo = new GameObject("HUDManager");
+                hudGo.transform.SetParent(uiRoot.transform);
+                hud = hudGo.AddComponent<HUDManager>();
+                VisualUtils.SetupMockHUD(hud);
+            }
+            else if (hud.viewfinderGroup == null)
+            {
+                VisualUtils.SetupMockHUD(hud);
+            }
 
-            Debug.Log("[Bootstrap] Hierarchy setup complete.");
+            // Ensure Settings
+            var settings = Object.FindAnyObjectByType<SettingsController>();
+            if (settings == null)
+            {
+                var settingsGo = new GameObject("SettingsController");
+                settingsGo.transform.SetParent(uiRoot.transform);
+                settings = settingsGo.AddComponent<SettingsController>();
+                VisualUtils.SetupMockSettings(settings);
+            }
+            else if (settings.GetComponentInChildren<CanvasGroup>() == null)
+            {
+                VisualUtils.SetupMockSettings(settings);
+            }
+
+            // Ensure Editorial UI
+            var editorial = Object.FindAnyObjectByType<EditorialUI>();
+            if (editorial == null)
+            {
+                var editorialGo = new GameObject("EditorialUI");
+                editorialGo.transform.SetParent(uiRoot.transform);
+                editorial = editorialGo.AddComponent<EditorialUI>();
+                SetupEditorialUI(editorial);
+            }
+
+            // Ensure Gallery UI
+            var gallery = Object.FindAnyObjectByType<PhotoGalleryUI>();
+            if (gallery == null)
+            {
+                var galleryGo = new GameObject("PhotoGalleryUI");
+                galleryGo.transform.SetParent(uiRoot.transform);
+                gallery = galleryGo.AddComponent<PhotoGalleryUI>();
+                VisualUtils.SetupPhotoGallery(gallery);
+            }
+            else if (gallery.galleryGroup == null)
+            {
+                VisualUtils.SetupPhotoGallery(gallery);
+            }
+
+            // Ensure Journal UI
+            var jUi = Object.FindAnyObjectByType<JournalUI>();
+            if (jUi == null)
+            {
+                var jUiGo = new GameObject("JournalUI");
+                jUiGo.transform.SetParent(uiRoot.transform);
+                jUi = jUiGo.AddComponent<JournalUI>();
+            }
+            else if (jUi.journalCanvasGroup == null)
+            {
+                // Force Awake/Start re-initialization if canvas fields are blank
+                jUi.SendMessage("SetupUI", SendMessageOptions.DontRequireReceiver);
+            }
+
+            // Ensure Newspaper Board UI
+            var boardUi = Object.FindAnyObjectByType<NewspaperBoardUI>();
+            if (boardUi == null)
+            {
+                var boardUiGo = new GameObject("NewspaperBoardUI");
+                boardUiGo.transform.SetParent(uiRoot.transform);
+                boardUi = boardUiGo.AddComponent<NewspaperBoardUI>();
+            }
+            else if (boardUi.boardCanvasGroup == null)
+            {
+                boardUi.SendMessage("SetupUI", SendMessageOptions.DontRequireReceiver);
+            }
+
+            // Ensure Photo Review UI
+            var review = Object.FindAnyObjectByType<PhotoReviewUI>();
+            if (review == null)
+            {
+                var reviewGo = new GameObject("PhotoReviewUI");
+                reviewGo.transform.SetParent(uiRoot.transform);
+                review = reviewGo.AddComponent<PhotoReviewUI>();
+            }
+            else if (review.GetComponentInChildren<CanvasGroup>() == null)
+            {
+                review.SendMessage("BuildUI", SendMessageOptions.DontRequireReceiver);
+            }
+
+            // Ensure Centralized Input Listener
+            if (Object.FindAnyObjectByType<GPOyun.InputSystem.GlobalInputListener>() == null)
+            {
+                var inputGo = new GameObject("GlobalInputListener");
+                inputGo.transform.SetParent(uiRoot.transform);
+                inputGo.AddComponent<GPOyun.InputSystem.GlobalInputListener>();
+            }
+
+            // Ensure EventSystem
+            if (Object.FindAnyObjectByType<UnityEngine.EventSystems.EventSystem>() == null)
+            {
+                var eventSystemGo = new GameObject("EventSystem");
+                eventSystemGo.transform.SetParent(uiRoot.transform);
+                eventSystemGo.AddComponent<UnityEngine.EventSystems.EventSystem>();
+                eventSystemGo.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+            }
+
+            // Ensure 10 Refactored & Use Case singletons exist!
+            if (Object.FindAnyObjectByType<SocialDatabase>() == null)
+            {
+                var go = new GameObject("SocialDatabase");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<SocialDatabase>();
+            }
+            if (Object.FindAnyObjectByType<CameraSystem.ViewfinderManager>() == null)
+            {
+                var go = new GameObject("ViewfinderManager");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<CameraSystem.ViewfinderManager>();
+            }
+            if (Object.FindAnyObjectByType<UI.GalleryController>() == null)
+            {
+                var go = new GameObject("GalleryController");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<UI.GalleryController>();
+            }
+            if (Object.FindAnyObjectByType<StoryComposer>() == null)
+            {
+                var go = new GameObject("StoryComposer");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<StoryComposer>();
+            }
+            if (Object.FindAnyObjectByType<SocialHistoryLogger>() == null)
+            {
+                var go = new GameObject("SocialHistoryLogger");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<SocialHistoryLogger>();
+            }
+
+            if (Object.FindAnyObjectByType<UseCases.TakePictureUseCase>() == null)
+            {
+                var go = new GameObject("TakePictureUseCase");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<UseCases.TakePictureUseCase>();
+            }
+            if (Object.FindAnyObjectByType<UseCases.SelectPictureUseCase>() == null)
+            {
+                var go = new GameObject("SelectPictureUseCase");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<UseCases.SelectPictureUseCase>();
+            }
+            if (Object.FindAnyObjectByType<UseCases.ComposeEditorialUseCase>() == null)
+            {
+                var go = new GameObject("ComposeEditorialUseCase");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<UseCases.ComposeEditorialUseCase>();
+            }
+            if (Object.FindAnyObjectByType<UseCases.SyncSocialDbUseCase>() == null)
+            {
+                var go = new GameObject("SyncSocialDbUseCase");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<UseCases.SyncSocialDbUseCase>();
+            }
+            if (Object.FindAnyObjectByType<UseCases.ApplyPublishingImpactUseCase>() == null)
+            {
+                var go = new GameObject("ApplyPublishingImpactUseCase");
+                go.transform.SetParent(uiRoot.transform);
+                go.AddComponent<UseCases.ApplyPublishingImpactUseCase>();
+            }
+
+            Debug.Log("[Bootstrap] UI Stack successfully verified and filled missing parts.");
         }
 
-        [ContextMenu("!!! NUCLEAR COLD START: FIX PROJECT !!!")]
         public void NuclearColdStart()
         {
-            Debug.Log("[Bootstrap] Starting Nuclear Cold Start...");
+            Debug.Log("[Bootstrap] === NUCLEAR COLD START ===");
 
-            SetupFolders();
-            SetupHierarchy();
-
-            GameObject core = GameObject.Find("[CORE]");
-            GameObject ui = GameObject.Find("[UI]");
-
-            SetupWorldEnvironment(core);
-            Camera cam = SetupLoLCamera();
-            GameObject lightGo = SetupLighting();
-            SetupAtmosphere(core, lightGo);
-            SetupPlayer(core);
-            GameManager gm = SetupGameManagers(core);
-            SetupCameraSystems(cam);
-            SetupUI(ui);
-
-            if (gm != null)
+            // ── 0. CLEANUP SCENE DEFAULTS ──────────────────────────────────
+            // The scene's baked-in "Main Camera" has an AudioListener.
+            // Destroy it immediately (DestroyImmediate so it's gone THIS frame)
+            // before we create our own camera to avoid the "2 AudioListeners" warning.
+            var sceneCamera = GameObject.Find("Main Camera");
+            if (sceneCamera != null && sceneCamera != this.gameObject)
             {
-                gm.Initialize(
-                    FindAnyObjectByType<NPCManager>(),
-                    FindAnyObjectByType<NewspaperManager>(),
-                    EventBus.Instance
-                );
+                DestroyImmediate(sceneCamera);
+                Debug.Log("[Bootstrap] Removed scene's default Main Camera.");
             }
+            // Also sweep any stray AudioListeners left from prior play sessions
+            foreach (var al in FindObjectsByType<AudioListener>())
+                DestroyImmediate(al.gameObject.name == "Main Camera" ? al.gameObject : (Object)al);
 
-            Debug.Log("[Bootstrap] ALL SYSTEMS ONLINE.");
-        }
+            // ── 1. MANAGERS ────────────────────────────────────────────────
+            GameObject managersRoot = new GameObject("[MANAGERS]");
 
-        private void SetupWorldEnvironment(GameObject parent)
-        {
-            var builder = FindAnyObjectByType<TownSquareBuilder>() ?? new GameObject("TownSquareBuilder").AddComponent<TownSquareBuilder>();
-            builder.transform.SetParent(parent.transform);
+            // Time Manager
+            var timeManagerGo = new GameObject("TimeManager");
+            timeManagerGo.transform.SetParent(managersRoot.transform);
+            timeManagerGo.AddComponent<TimeManager>();
+
+            // NPC Manager (must exist before town spawns NPCs)
+            var npcManagerGo = new GameObject("NPCManager");
+            npcManagerGo.transform.SetParent(managersRoot.transform);
+            npcManagerGo.AddComponent<NPCManager>();
+
+            // Newspaper Manager
+            var newspaperManagerGo = new GameObject("NewspaperManager");
+            newspaperManagerGo.transform.SetParent(managersRoot.transform);
+            newspaperManagerGo.AddComponent<NewspaperManager>();
+
+            // Game Manager
+            var gameManagerGo = new GameObject("GameManager");
+            gameManagerGo.transform.SetParent(managersRoot.transform);
+            gameManagerGo.AddComponent<GameManager>();
+
+            // Relationship Matrix
+            var relGo = new GameObject("RelationshipMatrix");
+            relGo.transform.SetParent(managersRoot.transform);
+            var matrix = relGo.AddComponent<RelationshipMatrix>();
+            matrix.InitializeMatrix();
+
+            // Journal Manager
+            var journalGo = new GameObject("JournalManager");
+            journalGo.transform.SetParent(managersRoot.transform);
+            journalGo.AddComponent<JournalManager>();
+
+            // Photo Scorer
+            var scorerGo = new GameObject("PhotoScorer");
+            scorerGo.transform.SetParent(managersRoot.transform);
+            scorerGo.AddComponent<PhotoScorer>();
+
+            Debug.Log("[Bootstrap] Managers created.");
+
+            // ── 2b. LIGHTING + ATMOSPHERE ────────────────────────────
+            var sunGo = new GameObject("Sun_Directional");
+            sunGo.transform.SetParent(managersRoot.transform);
+            sunGo.transform.rotation = Quaternion.Euler(50f, -30f, 0);
+            var sunLight = sunGo.AddComponent<Light>();
+            sunLight.type           = LightType.Directional;
+            sunLight.intensity      = 1.2f;
+            sunLight.color          = new Color(1f, 0.95f, 0.85f);
+            sunLight.shadows        = LightShadows.Soft;
+            sunLight.shadowStrength = 0.75f;
+            RenderSettings.ambientMode  = UnityEngine.Rendering.AmbientMode.Flat;
+            RenderSettings.ambientLight = new Color(0.4f, 0.4f, 0.5f);
+
+            var atmosphereGo = new GameObject("AtmosphereManager");
+            atmosphereGo.transform.SetParent(managersRoot.transform);
+            var atm = atmosphereGo.AddComponent<AtmosphereManager>();
+            atm.Initialize(sunLight);
+
+            Debug.Log("[Bootstrap] Sun and atmosphere created.");
+
+            // ── 3. ENVIRONMENT ─────────────────────────────────────
+            GameObject townRoot = new GameObject("[TOWN]");
+            var builder = townRoot.AddComponent<TownSquareBuilder>();
             builder.Build();
-        }
 
-        private Camera SetupLoLCamera()
-        {
-            Camera cam = Camera.main;
-            if (cam == null)
-            {
-                GameObject camGo = new GameObject("Main Camera");
-                camGo.tag = "MainCamera";
-                cam = camGo.AddComponent<Camera>();
-                camGo.AddComponent<AudioListener>();
-            }
-            else
-            {
-                cam.tag = "MainCamera";
-            }
+            Debug.Log("[Bootstrap] Town built.");
 
-            cam.transform.position = new Vector3(0, 25, -20);
-            cam.transform.rotation = Quaternion.Euler(55, 0, 0);
-            cam.fieldOfView = 60;
-            return cam;
-        }
+            // ── 3. PLAYER ──────────────────────────────────────────────────
+            // Capsule body
+            GameObject playerGo = new GameObject("[PLAYER]");
+            playerGo.transform.position = new Vector3(0, 1f, -8f);
 
-        private GameObject SetupLighting()
-        {
-            GameObject lightGo = GameObject.Find("Directional Light");
-            if (lightGo == null)
-            {
-                lightGo = new GameObject("Directional Light");
-                var light = lightGo.AddComponent<Light>();
-                light.type = LightType.Directional;
-                light.intensity = 1.0f;
-                lightGo.transform.rotation = Quaternion.Euler(50, -30, 0);
-            }
-            return lightGo;
-        }
+            GameObject playerBody = GameObject.CreatePrimitive(PrimitiveType.Capsule);
+            playerBody.name = "Body";
+            playerBody.transform.SetParent(playerGo.transform);
+            playerBody.transform.localPosition = Vector3.zero;
+            VisualUtils.ApplyAesthetic(playerBody, VisualUtils.CrimsonRed);
 
-        private void SetupAtmosphere(GameObject parent, GameObject lightGo)
-        {
-            var atmosphere = FindAnyObjectByType<AtmosphereManager>() ?? new GameObject("AtmosphereManager").AddComponent<AtmosphereManager>();
-            atmosphere.transform.SetParent(parent.transform);
-            atmosphere.Initialize(lightGo.GetComponent<Light>());
-        }
+            GameObject playerHead = GameObject.CreatePrimitive(PrimitiveType.Sphere);
+            playerHead.name = "Head";
+            playerHead.transform.SetParent(playerGo.transform);
+            playerHead.transform.localPosition = new Vector3(0, 1.2f, 0);
+            playerHead.transform.localScale = Vector3.one * 0.6f;
+            VisualUtils.ApplyAesthetic(playerHead, VisualUtils.CrimsonRed);
+            VisualUtils.ApplyPlayerVisuals(playerGo);
 
-        private void SetupPlayer(GameObject parent)
-        {
-            GameObject player = GameObject.Find("Player_Mock");
-            if (player == null)
-            {
-                GameObject playerGroup = new GameObject("Player_Mock");
-                playerGroup.transform.position = new Vector3(0, 1.5f, -8f); // Moved further back
+            // Remove colliders from head/body so they don't interfere with physics
+            var headCol = playerHead.GetComponent<Collider>();
+            if (headCol != null) Destroy(headCol);
 
-                GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                body.name = "Body";
-                body.transform.SetParent(playerGroup.transform);
-                body.transform.localPosition = Vector3.zero;
-                VisualUtils.ApplyAesthetic(body, VisualUtils.CobaltBlue);
-                // Remove primitive collider to avoid fighting with main CharacterController
-                DestroyImmediate(body.GetComponent<Collider>());
+            // Add a CharacterController for movement so the player doesn't clip through ground
+            var cc = playerGo.AddComponent<CharacterController>();
+            cc.height = 2f;
+            cc.radius = 0.4f;
+            cc.center = new Vector3(0, 1f, 0);
 
-                GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
-                head.name = "Head";
-                head.transform.SetParent(playerGroup.transform);
-                head.transform.localPosition = new Vector3(0, 1.2f, 0);
-                head.transform.localScale = new Vector3(0.6f, 0.6f, 0.6f);
-                VisualUtils.ApplyAesthetic(head, VisualUtils.CobaltBlue);
-                DestroyImmediate(head.GetComponent<Collider>());
+            playerGo.AddComponent<PlayerController>();
 
-                var cc = playerGroup.AddComponent<CharacterController>();
-                cc.height = 2f;
-                cc.center = new Vector3(0, 1f, 0);
-                cc.enabled = true; // Ensure active
+            Debug.Log("[Bootstrap] Player created.");
 
-                playerGroup.tag = "Player";
-                playerGroup.AddComponent<PlayerController>();
-                VisualUtils.ApplyPlayerVisuals(playerGroup);
-            }
-            else
-            {
-                player.tag = "Player";
-                var cc = player.GetComponent<CharacterController>();
-                if (cc != null) cc.enabled = true;
-            }
-        }
+            // ── 4. CAMERA ──────────────────────────────────────────────────
+            GameObject cameraGo = new GameObject("Main Camera");
+            cameraGo.tag = "MainCamera";
+            cameraGo.transform.SetParent(playerGo.transform);
+            // Eye-level, slightly forward
+            cameraGo.transform.localPosition = new Vector3(0, 1.6f, 0.2f);
+            cameraGo.transform.localRotation = Quaternion.identity;
 
-        private GameManager SetupGameManagers(GameObject parent)
-        {
-            GameManager gm = FindAnyObjectByType<GameManager>();
-            if (gm == null)
-            {
-                GameObject gmGo = new GameObject("GameManager");
-                gm = gmGo.AddComponent<GameManager>();
-                gmGo.transform.SetParent(parent.transform);
-            }
-            return gm;
-        }
+            var cam = cameraGo.AddComponent<Camera>();
+            cam.fieldOfView = 70f;
+            cam.nearClipPlane = 0.1f;
 
-        private void SetupCameraSystems(Camera cam)
-        {
-            if (cam.GetComponent<CameraController>() == null) cam.gameObject.AddComponent<CameraController>();
-            if (cam.GetComponent<CameraFollow>() == null) cam.gameObject.AddComponent<CameraFollow>();
-        }
+            // Destroy ALL existing AudioListeners (scene default camera has one baked in)
+            foreach (var al in FindObjectsByType<AudioListener>())
+                Destroy(al);
+            cameraGo.AddComponent<AudioListener>(); // Exactly one
 
-        private void SetupUI(GameObject parent)
-        {
-            var hud = FindAnyObjectByType<HUDManager>() ?? new GameObject("HUDManager").AddComponent<HUDManager>();
-            hud.transform.SetParent(parent.transform);
-            VisualUtils.SetupMockHUD(hud);
+            cameraGo.AddComponent<CameraController>();
 
-            var splash = FindAnyObjectByType<SplashController>() ?? new GameObject("SplashController").AddComponent<SplashController>();
-            splash.transform.SetParent(parent.transform);
+            Debug.Log("[Bootstrap] Camera created.");
+
+            // ── 5. UI STACK ────────────────────────────────────────────────
+            GameObject uiRoot = new GameObject("[UI]");
+
+            // Splash
+            var splashGo = new GameObject("SplashController");
+            splashGo.transform.SetParent(uiRoot.transform);
+            var splash = splashGo.AddComponent<SplashController>();
             VisualUtils.SetupMockSplash(splash);
 
-            var settings = FindAnyObjectByType<SettingsController>() ?? new GameObject("SettingsController").AddComponent<SettingsController>();
-            settings.transform.SetParent(parent.transform);
+            // HUD
+            var hudGo = new GameObject("HUDManager");
+            hudGo.transform.SetParent(uiRoot.transform);
+            var hud = hudGo.AddComponent<HUDManager>();
+            VisualUtils.SetupMockHUD(hud);
+
+            // Settings
+            var settingsGo = new GameObject("SettingsController");
+            settingsGo.transform.SetParent(uiRoot.transform);
+            var settings = settingsGo.AddComponent<SettingsController>();
             VisualUtils.SetupMockSettings(settings);
 
-            var editorial = FindAnyObjectByType<EditorialUI>() ?? new GameObject("EditorialUI").AddComponent<EditorialUI>();
-            editorial.transform.SetParent(parent.transform);
+            // Editorial Desk
+            var editorialGo = new GameObject("EditorialUI");
+            editorialGo.transform.SetParent(uiRoot.transform);
+            var editorial = editorialGo.AddComponent<EditorialUI>();
+            SetupEditorialUI(editorial);
 
-            splashController = splash;
+            // Gallery UI
+            var galleryGo = new GameObject("PhotoGalleryUI");
+            galleryGo.transform.SetParent(uiRoot.transform);
+            var gallery = galleryGo.AddComponent<PhotoGalleryUI>();
+            VisualUtils.SetupPhotoGallery(gallery);
+
+            // Journal UI
+            var jUiGo = new GameObject("JournalUI");
+            jUiGo.transform.SetParent(uiRoot.transform);
+            jUiGo.AddComponent<JournalUI>();
+
+            // Newspaper Board UI
+            var boardUiGo = new GameObject("NewspaperBoardUI");
+            boardUiGo.transform.SetParent(uiRoot.transform);
+            boardUiGo.AddComponent<NewspaperBoardUI>();
+
+            // Centralized high-reliability input listener
+            var inputGo = new GameObject("GlobalInputListener");
+            inputGo.transform.SetParent(uiRoot.transform);
+            inputGo.AddComponent<GPOyun.InputSystem.GlobalInputListener>();
+
+            // EventSystem for UI interactions (GraphicRaycaster support)
+            var eventSystemGo = new GameObject("EventSystem");
+            eventSystemGo.transform.SetParent(uiRoot.transform);
+            eventSystemGo.AddComponent<UnityEngine.EventSystems.EventSystem>();
+            eventSystemGo.AddComponent<UnityEngine.InputSystem.UI.InputSystemUIInputModule>();
+
+            Debug.Log("[Bootstrap] UI stack and EventSystem created.");
+
+            Debug.Log("[Bootstrap] === COLD START COMPLETE. Press Play and explore! ===");
         }
 
-        private void CheckAndAdd<T>(GameObject parent, string name) where T : MonoBehaviour
+        private void SetupEditorialUI(EditorialUI editorial)
         {
-            if (UnityEngine.Object.FindObjectsByType<T>(UnityEngine.FindObjectsInactive.Include, UnityEngine.FindObjectsSortMode.None).Length == 0)
-            {
-                GameObject go = new GameObject(name);
-                go.transform.SetParent(parent.transform);
-                go.AddComponent<T>();
-            }
+            var canvas = VisualUtils.CreateBaseCanvas("MOCK_EDITORIAL", 200, editorial.transform);
+            var cg = canvas.gameObject.AddComponent<CanvasGroup>();
+            cg.alpha = 0f;
+            cg.blocksRaycasts = false;
+            cg.interactable = false;
+
+            // Status text
+            var txtGo = new GameObject("StatusText");
+            txtGo.transform.SetParent(canvas.transform, false);
+            var txt = txtGo.AddComponent<UnityEngine.UI.Text>();
+            txt.font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf");
+            txt.fontSize = 36;
+            txt.text = "EDITORIAL DESK";
+            txt.color = VisualUtils.StuccoWhite;
+            txt.alignment = TextAnchor.MiddleCenter;
+            var rt = txtGo.GetComponent<RectTransform>();
+            rt.anchoredPosition = new Vector2(0, 100);
+            rt.sizeDelta = new Vector2(500, 60);
+
+            editorial.editorialCanvasGroup = cg;
+            editorial.statusText = txt;
+
+            VisualUtils.EnsureCanvasRenderers(editorial.transform);
         }
-        #endif
     }
 }

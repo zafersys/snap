@@ -1,117 +1,96 @@
 using UnityEngine;
 using UnityEngine.InputSystem;
-using GPOyun.Events;
+using GPOyun.Core;
+using GPOyun.UI;
 
 namespace GPOyun.Player
 {
     /// <summary>
-    /// Basic MVP Player Controller.
-    /// Handles WASD movement and simple camera capture logic.
+    /// A1 Level Player Controller — uses the New Input System package.
+    /// WASD / Arrow keys: move & turn. 
+    /// Mouse X: also turns the player (for smoother feel).
     /// </summary>
-    [RequireComponent(typeof(GPOyun.Core.MovementBrain))]
+    [RequireComponent(typeof(CharacterController))]
     public class PlayerController : MonoBehaviour
     {
-        private GPOyun.Core.MovementBrain _brain;
-        private GPOyun.Core.CharacterMotor _motor; // Keep for telemetry
+        [Header("Controls")]
+        public float moveSpeed    = 5.0f;
+        public float rotationSpeed = 120.0f;
+        public float mouseSensitivity = 0.15f;
+        public float gravity       = -9.8f;
 
-        private float _telemetryTimer;
+        private CharacterController _cc;
+        private float _verticalVelocity;
 
         private void Awake()
         {
-            _brain = GetComponent<GPOyun.Core.MovementBrain>();
-            _motor = GetComponent<GPOyun.Core.CharacterMotor>();
-            
-            // Physical Assurance
-            var cc = GetComponent<CharacterController>();
-            if (cc != null) cc.enabled = true;
-
+            _cc = GetComponent<CharacterController>();
             CreateLabel();
         }
 
         private void CreateLabel()
         {
-            GameObject labelGo = new GameObject("ID_Label");
-            labelGo.transform.SetParent(this.transform);
+            var labelGo = new GameObject("ID_Label");
+            labelGo.transform.SetParent(transform);
             labelGo.transform.localPosition = new Vector3(0, 2.2f, 0);
-            
             var text = labelGo.AddComponent<TextMesh>();
-            text.text = "PLAYER (0)";
+            text.text          = "PLAYER";
             text.characterSize = 0.2f;
-            text.anchor = TextAnchor.MiddleCenter;
-            text.alignment = TextAlignment.Center;
-            text.color = Color.white;
-            text.fontStyle = FontStyle.Bold;
+            text.anchor        = TextAnchor.MiddleCenter;
+            text.alignment     = TextAlignment.Center;
+            text.color         = Color.white;
+            text.fontStyle     = FontStyle.Bold;
         }
-
-        [Header("Controls")]
-        [SerializeField] private float lookSensitivity = 1.0f;
 
         private void Update()
         {
-            HandleMovement();
-            MeasureTelemetry();
-        }
-
-        private void HandleMovement()
-        {
-            if (_brain == null) return;
-
-            // 1. Get Input Values
-            float x = 0;
-            float z = 0;
-            var keyboard = UnityEngine.InputSystem.Keyboard.current;
-            
+            var keyboard = Keyboard.current;
+            var mouse    = Mouse.current;
             if (keyboard == null) return;
 
-            if (keyboard.wKey.isPressed) z += 1;
-            if (keyboard.sKey.isPressed) z -= 1;
-            if (keyboard.aKey.isPressed) x -= 1;
-            if (keyboard.dKey.isPressed) x += 1;
-
-            Vector3 inputVector = new Vector3(x, 0, z);
-            Vector3 moveDir = Vector3.zero;
-
-            // 2. Transform relative to Camera
-            if (inputVector.sqrMagnitude > 0.01f)
+            // ── TAB RELATIONSHIP OVERLAY ──────────────────────────────────
+            if (GPOyun.UI.HUDManager.Instance != null)
             {
-                var camera = UnityEngine.Camera.main;
-                if (camera != null)
-                {
-                    Vector3 forward = camera.transform.forward;
-                    Vector3 right = camera.transform.right;
-                    forward.y = 0;
-                    right.y = 0;
-                    forward.Normalize();
-                    right.Normalize();
-
-                    moveDir = (forward * inputVector.z + right * inputVector.x).normalized;
-                }
-                else
-                {
-                    moveDir = inputVector.normalized;
-                }
+                GPOyun.UI.HUDManager.Instance.relationshipOverlayActive = keyboard.tabKey.isPressed;
             }
 
-            // 3. Apply Speed/Sensitivity (Sensitivity here acts as a general speed multiplier if desired, 
-            // but primarily we use the base MoveSpeed in Motor. We allow scaling here if needed.)
-            _brain.MoveSafely(moveDir);
-        }
-
-        public void SetSensitivity(float value) => lookSensitivity = value;
-
-        private void MeasureTelemetry()
-        {
-            _telemetryTimer += Time.deltaTime;
-            if (_telemetryTimer >= 0.1f && EventBus.Instance != null && _motor != null)
+            // ── FSM STATE PAUSED CHECK ────────────────────────────────────
+            if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameManager.GameState.Paused)
             {
-                _telemetryTimer = 0f;
-                EventBus.Instance.Publish(new MovementMetricsEvent {
-                    EntityId = "Player",
-                    Velocity = _motor.GetCurrentVelocity(),
-                    Speed = _motor.GetCurrentSpeed(),
-                    Position = transform.position
-                });
+                _verticalVelocity = -1f;
+                return;
             }
+
+            // ── MOVEMENT ──────────────────────────────────────────────────
+            float moveZ = 0f;
+            if (keyboard.wKey.isPressed || keyboard.upArrowKey.isPressed)   moveZ =  1f;
+            if (keyboard.sKey.isPressed || keyboard.downArrowKey.isPressed)  moveZ = -1f;
+
+            // ── ROTATION ──────────────────────────────────────────────────
+            float rotY = 0f;
+            if (keyboard.aKey.isPressed || keyboard.leftArrowKey.isPressed)  rotY = -1f;
+            if (keyboard.dKey.isPressed || keyboard.rightArrowKey.isPressed) rotY =  1f;
+
+            // Mouse horizontal also rotates (only when mouse is locked)
+            if (mouse != null && Cursor.lockState == CursorLockMode.Locked)
+                rotY += mouse.delta.ReadValue().x * mouseSensitivity;
+
+            transform.Rotate(Vector3.up, rotY * rotationSpeed * Time.deltaTime);
+
+            // ── GRAVITY ───────────────────────────────────────────────────
+            if (_cc.isGrounded)
+                _verticalVelocity = -1f;
+            else
+                _verticalVelocity += gravity * Time.deltaTime;
+
+            Vector3 move = transform.forward * moveZ * moveSpeed;
+            move.y = _verticalVelocity;
+            _cc.Move(move * Time.deltaTime);
+
+            // ── CURSOR LOCK ────────────────────────────────────────────────
+            // Click → lock. ESC is handled exclusively by SettingsController.
+            if (mouse != null && mouse.leftButton.wasPressedThisFrame && Cursor.lockState != CursorLockMode.Locked)
+                Cursor.lockState = CursorLockMode.Locked;
         }
     }
 }

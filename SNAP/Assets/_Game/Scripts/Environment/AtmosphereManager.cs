@@ -1,5 +1,4 @@
 using UnityEngine;
-using GPOyun.Events;
 using GPOyun.Managers;
 
 namespace GPOyun.Environment
@@ -23,21 +22,6 @@ namespace GPOyun.Environment
         public void Initialize(Light mainLight)
         {
             mainDirectionalLight = mainLight;
-        }
-
-        private void Start()
-        {
-            if (EventBus.Instance != null)
-                EventBus.Instance.Subscribe<DayPhaseChangedEvent>(OnPhaseChanged);
-
-            // Set initial state
-            OnPhaseChanged(new DayPhaseChangedEvent { NewPhase = DayPhase.Morning });
-        }
-
-        private void OnDestroy()
-        {
-            if (EventBus.Instance != null)
-                EventBus.Instance.Unsubscribe<DayPhaseChangedEvent>(OnPhaseChanged);
         }
 
         private void Update()
@@ -95,12 +79,6 @@ namespace GPOyun.Environment
                 DayPhase.Night     => nightColor,
                 _                  => morningColor
             };
-        }
-
-        private void OnPhaseChanged(DayPhaseChangedEvent phaseEvent)
-        {
-            // The Update() loop handles smooth transitions now.
-            Debug.Log($"[AtmosphereManager] Day Phase is now {phaseEvent.NewPhase}");
         }
     }
 }

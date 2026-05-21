@@ -10,27 +10,58 @@ namespace GPOyun.NPC
     {
         [SerializeField] private NPCController controller;
         [SerializeField] private Renderer capsuleRenderer;
+        
+        private Color _baseColor;
 
         private void Start()
         {
             if (controller == null) controller = GetComponent<NPCController>();
             if (capsuleRenderer == null) capsuleRenderer = GetComponentInChildren<Renderer>();
 
-            ApplyVisuals();
+            // Generate a base color based on NpcId to keep it consistent
+            float hue = (controller != null) ? (controller.NpcId * 0.13f) % 1.0f : 0f;
+            _baseColor = Color.HSVToRGB(hue, 0.7f, 0.8f);
+
+            if (capsuleRenderer != null)
+            {
+                capsuleRenderer.material = new Material(Shader.Find("Standard"));
+                capsuleRenderer.material.color = _baseColor;
+            }
         }
 
-        public void ApplyVisuals()
+        private void Update()
         {
             if (capsuleRenderer == null || controller == null) return;
 
-            // Generate a color based on NpcId to keep it consistent
-            float hue = (controller.NpcId * 0.13f) % 1.0f;
-            Color npcColor = Color.HSVToRGB(hue, 0.7f, 0.8f);
+            Color targetColor = _baseColor;
 
-            capsuleRenderer.material = new Material(Shader.Find("Standard"));
-            capsuleRenderer.material.color = npcColor;
-            
-            Debug.Log($"[NPC_{controller.NpcId}] Visual color assigned.");
+            switch (controller.currentEmotion)
+            {
+                case EmotionType.Happy:
+                    targetColor = Color.yellow;
+                    break;
+                case EmotionType.Sad:
+                    targetColor = Color.blue;
+                    break;
+                case EmotionType.Angry:
+                    targetColor = Color.red;
+                    break;
+                case EmotionType.Fearful:
+                    targetColor = new Color(0.5f, 0f, 0.5f); // Purple
+                    break;
+                case EmotionType.Surprised:
+                    targetColor = Color.cyan;
+                    break;
+                case EmotionType.Disgusted:
+                    targetColor = Color.green;
+                    break;
+                case EmotionType.Neutral:
+                default:
+                    targetColor = _baseColor;
+                    break;
+            }
+
+            capsuleRenderer.material.color = Color.Lerp(capsuleRenderer.material.color, targetColor, Time.deltaTime * 5f);
         }
     }
 }

@@ -1,7 +1,8 @@
 using System;
 using System.Collections.Generic;
 using UnityEngine;
-using GPOyun.Events;
+using GPOyun.Newspaper;
+using GPOyun.NPC;
 
 namespace GPOyun
 {

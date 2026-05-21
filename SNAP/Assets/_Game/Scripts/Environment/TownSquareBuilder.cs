@@ -57,6 +57,9 @@ namespace GPOyun.Environment
             VisualUtils.ApplyAesthetic(tower, VisualUtils.StuccoWhite);
             GameObject towerTop = CreatePrimitive(PrimitiveType.Cube, "TowerCap", new Vector3(18, 16.5f, 18), new Vector3(4.5f, 1, 4.5f));
             VisualUtils.ApplyAesthetic(towerTop, VisualUtils.CobaltBlue);
+            
+            var towerSubject = tower.AddComponent<PhotoSubject>();
+            towerSubject.PrimaryCategory = GPOyun.Newspaper.NewsCategory.Global;
 
             // 5. CENTRAL FOUNTAIN & PLAZA DETAILS
             GameObject fBase = CreatePrimitive(PrimitiveType.Cylinder, "Fountain_Base", Vector3.zero, new Vector3(5, 0.4f, 5));
@@ -80,7 +83,7 @@ namespace GPOyun.Environment
             CreateFlowerPot(new Vector3(8, 0.5f, -8));
 
             // 8. NPC SPAWNERS
-            for (int i = 0; i < 6; i++)
+            for (int i = 0; i < 10; i++)
             {
                 SpawnNPC(i, board.transform);
             }
@@ -177,32 +180,51 @@ namespace GPOyun.Environment
             npcGroup.transform.SetParent(this.transform);
             npcGroup.transform.localPosition = spawnPos;
 
+            Color[] presetColors = new Color[] {
+                VisualUtils.Terracotta,
+                VisualUtils.CobaltBlue,
+                VisualUtils.PineGreen,
+                VisualUtils.WoodBrown,
+                VisualUtils.StuccoWhite,
+                new Color(1f, 0.55f, 0.35f), // Premium Peach
+                new Color(1f, 0.82f, 0.15f), // Sunshine Yellow
+                new Color(0.85f, 0.45f, 0.95f), // Soft Lavender
+                new Color(0.15f, 0.75f, 0.75f), // Cozy Teal
+                new Color(1f, 0.35f, 0.35f)  // Crimson Coral
+            };
+            Color col = presetColors[id % presetColors.Length];
+
             GameObject body = GameObject.CreatePrimitive(PrimitiveType.Capsule);
             body.name = "Body";
             body.transform.SetParent(npcGroup.transform);
             body.transform.localPosition = Vector3.zero;
-            VisualUtils.ApplyAesthetic(body, VisualUtils.Terracotta);
+            VisualUtils.ApplyAesthetic(body, col);
 
             GameObject head = GameObject.CreatePrimitive(PrimitiveType.Sphere);
             head.name = "Head";
             head.transform.SetParent(npcGroup.transform);
             head.transform.localPosition = new Vector3(0, 1.2f, 0);
             head.transform.localScale = new Vector3(0.6f, 0.6f, 0.6f);
-            VisualUtils.ApplyAesthetic(head, VisualUtils.Terracotta);
+            VisualUtils.ApplyAesthetic(head, col);
             
             NPCController controller = npcGroup.AddComponent<NPCController>();
             controller.NpcId = id;
+            string[] names = new string[] {
+                "Leo", "Zoe", "Max", "Mia", "Eli", "Ava", "Kai", "Ivy", "Rex", "Sol"
+            };
+            controller.NpcName = names[id % names.Length];
+            controller.boardPosition = board;
             
-            UnityEngine.AI.NavMeshAgent agent = npcGroup.GetComponent<UnityEngine.AI.NavMeshAgent>();
-            if (agent != null)
-            {
-                agent.speed = 1.5f;
-                agent.acceleration = 1.0f;
-                agent.stoppingDistance = 2.0f;
-            }
+            // Add visual helper
+            npcGroup.AddComponent<NPCVisualHelper>();
             
-            if (NPCManager.Instance != null) NPCManager.Instance.Register(controller);
-            controller.InitializeForTest(null, board);
+            // Add obstacle avoidance for A1 smooth walking
+            npcGroup.AddComponent<ObstacleAvoidance>();
+            
+            // Add PhotoSubject so the Camera can detect them
+            var photoSub = npcGroup.AddComponent<PhotoSubject>();
+            photoSub.SubjectName = controller.NpcName;
+            photoSub.PrimaryCategory = GPOyun.Newspaper.NewsCategory.Local;
         }
 
         private GameObject CreatePrimitive(PrimitiveType type, string name, Vector3 pos, Vector3 scale, Transform parentOverride = null)

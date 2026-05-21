@@ -1,15 +1,13 @@
 using UnityEngine;
 using UnityEngine.Events;
-using GPOyun;
 using GPOyun.Managers;
-using GPOyun.Events;
 using GPOyun.Newspaper;
 using GPOyun.NPC;
 
 namespace GPOyun.Core
 {
     /// <summary>
-    /// Singleton GameManager — owns global game state and lifecycle.
+    /// A1 Level GameManager
     /// </summary>
     public class GameManager : MonoBehaviour
     {
@@ -24,12 +22,12 @@ namespace GPOyun.Core
         [Header("Systems")]
         [SerializeField] private NPCManager npcManager;
         [SerializeField] private NewspaperManager newspaperManager;
-        [SerializeField] private EventBus eventBus;
 
         private void Awake()
         {
             if (Instance != null && Instance != this) { Destroy(gameObject); return; }
             Instance = this;
+            transform.SetParent(null);
             DontDestroyOnLoad(gameObject);
         }
 
@@ -41,12 +39,11 @@ namespace GPOyun.Core
             OnGameStateChanged.Invoke(newState);
         }
 
-        public void Initialize(NPCManager npcs, NewspaperManager news, EventBus bus)
+        public void Initialize(NPCManager npcs, NewspaperManager news)
         {
             npcManager = npcs;
             newspaperManager = news;
-            eventBus = bus;
-            Debug.Log("[GameManager] Systems initialized via Bootstrap.");
+            Debug.Log("[GameManager] Systems initialized.");
         }
 
         public void PauseGame()  => ChangeState(GameState.Paused);

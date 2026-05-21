@@ -1,4 +1,4 @@
-# MASTER GAME DESIGN DOCUMENT — GP-OYUN
+# MASTER GAME DESIGN DOCUMENT — GP-OYUN (A1 Level)
 
 ## 1. Project Identity
 - **Title**: GP-OYUN
@@ -9,19 +9,19 @@
 
 ---
 
-## 2. Technical Pillars
+## 2. Technical Pillars (A1 Level)
 | Pillar | Specification |
 |---|---|
-| **Architecture** | Event-Driven (Decoupled EventBus) |
-| **NPC Brain** | Two-Layer FSM: Emotional (Internal) + Behavioural (Physical) |
-| **Movement** | Unity NavMeshAgent (Parallel NPC routines) |
-| **Communication** | 100% Non-Verbal (Gestures, Blend Shapes) |
-| **Camera** | Fixed Orthographic Isometric (LoL perspective) |
+| **Architecture** | Direct Component Communication (Direct references and `FindObjectsOfType`) |
+| **NPC Brain** | Simple State Enum in `Update()` (e.g., `Idle, WalkingToBoard, Reading`) |
+| **Movement** | `transform.Translate` with basic obstacle avoidance raycasts |
+| **Communication** | 100% Non-Verbal (Direct UI updates and basic animations) |
+| **Camera** | Fixed Orthographic Isometric Follow Camera (`Vector3.Lerp`) |
 
 ---
 
 ## 3. Social Map & NPC Roster
-There are **8 core residents** each with a unique OCEAN personality model.
+There are **8 core residents** each with a unique personality profile (ScriptableObject).
 - **Agop (Baker)**: Generous Patriarch, stability node.
 - **Fatma (Gossip)**: Information node, carries and spreads emotions.
 - **Leila (Artist)**: Sensitive observer, emotional "canary".
@@ -33,50 +33,43 @@ There are **8 core residents** each with a unique OCEAN personality model.
 
 ---
 
-## 4. Finite State Machine (FSM) Spec
-### 4.1 Emotional States (Internal)
+## 4. NPC Logic Spec (The A1 Brain)
+### 4.1 Emotional States
 - **Joy / Sadness / Anger / Fear / Surprise / Disgust**
-- Decay naturally toward personality baseline.
-- Drive facial blend shapes and body posture additives.
+- Represented as a simple `public enum EmotionType` in the `NPCController`.
+- Evaluated when news is received using `NPCPersonalityData`.
 
-### 4.2 Behavioural States (Physical)
-- **IDLE**: Default state, look-around animations.
-- **WALKING**: Moving via NavMesh to routine targets.
-- **READING_NEWS**: Interaction with the Newspaper Board.
-- **REACTING**: High-intensity gesture play post-news.
-- **CONVERSING**: Social exchange between two NPCs.
-- **WORKING**: Stationed at shop (Agop, Mihail).
+### 4.2 Behavioural States
+- Managed by a `switch(currentState)` inside the `Update()` loop.
+- **IDLE**: Default state.
+- **WALKING_TO_BOARD**: Moving towards the newspaper board using simple math (`Vector3.MoveTowards`).
+- **READING_NEWS**: Waiting on a simple timer at the board.
+- **REACTING**: Triggering a visual/color change based on the emotion enum.
+- **WALKING_HOME**: Returning to origin.
 
 ---
 
 ## 5. Gameplay & Survival
-- **The Browser/Camera**: Limited shots (3-5), cooldown-based.
-- **The Newspaper**: Editorial choices (Categories: Scandal, Celebration, Disaster, Local, Global) drive town mood.
-- **Survival**: No publication = Bankruptcy. Exile = Reputation < 0.1.
-- **Consequences**: NPCs flee from the camera if player is exploitative.
+- **The Browser/Camera**: Players press Space to capture a photo of a `PhotoSubject` using simple raycasts.
+- **The Newspaper**: Editorial choices (Categories: Scandal, Celebration, Disaster, Local, Global) determine how the town reacts tomorrow.
+- **Consequences**: If the town is angry, NPCs might turn red and walk faster.
 
 ---
 
-## 6. Implementation Status (MVP)
+## 6. Implementation Status
 ### [x] Foundation
-- EventBus (Pub/Sub)
-- NPC Manager (Registry)
-- Game Manager (Lifecycle)
-- Time Manager (Phases: Morning to Night)
+- NPC Manager (Simple List Registry)
+- Game Manager (Start/Stop coordination)
+- Time Manager (Basic float timer converting to hours)
 
 ### [x] Player Systems
-- WASD Movement (Physics-based)
-- Capture Trigger (Mock event system)
+- WASD Movement (Input.GetAxis + Transform)
+- Capture Trigger (Raycast to detect PhotoSubjects)
 
-### [/] NPC Systems
-- **Emotional FSM**: Core logic implemented.
-- **Behavioural FSM**: *Planning Phase*. NPCs currently move to targets via simple scripts.
-- **Routine Scheduler**: *Partially Implemented*.
-
-### [ ] Advanced Features
-- Relationship Sentiment Graph
-- Gossip Propagation
-- Photo Tag Detection (RenderTexture analysis)
+### [x] NPC Systems
+- **State Loop**: Simple `switch` in `Update()` working cleanly.
+- **Reactions**: Personality logic mapped to basic enums.
+- **Movement**: `transform.Translate` working properly.
 
 ---
 
@@ -86,7 +79,6 @@ There are **8 core residents** each with a unique OCEAN personality model.
 3. [NPC Profiles](file:///Users/emre/dev/ai/gp-oyun/Design/03_npc_profiles.md)
 4. [Newspaper System](file:///Users/emre/dev/ai/gp-oyun/Design/04_newspaper_system.md)
 5. [Emotion Engine](file:///Users/emre/dev/ai/gp-oyun/Design/05_emotion_pantomime_engine.md)
-6. [Collision & Events](file:///Users/emre/dev/ai/gp-oyun/Design/06_collision_events_listeners.md)
-7. [FSM Specifications](file:///Users/emre/dev/ai/gp-oyun/Design/09_fsm_specifications.md)
+6. [Collision & Interactions](file:///Users/emre/dev/ai/gp-oyun/Design/06_collision_events_listeners.md)
+7. [NPC State Logic](file:///Users/emre/dev/ai/gp-oyun/Design/09_fsm_specifications.md)
 8. [Project Report](file:///Users/emre/dev/ai/gp-oyun/Design/10_project_report.md)
-9. [Asset Setup Guide](file:///Users/emre/dev/ai/gp-oyun/Documentation/Asset_Setup_Guide.md)

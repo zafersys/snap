@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<test-run id="2" testcasecount="7" result="Failed(Child)" total="7" passed="4" failed="3" inconclusive="0" skipped="0" asserts="0" engine-version="3.5.0.0" clr-version="4.0.30319.42000" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:55Z" duration="0.1645688">
+  <test-suite type="TestSuite" id="1016" name="SNAP" fullname="SNAP" runstate="Runnable" testcasecount="7" result="Failed" site="Child" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:55Z" duration="0.164569" total="7" passed="4" failed="3" inconclusive="0" skipped="0" asserts="0">
+    <properties>
+      <property name="platform" value="PlayMode" />
+    </properties>
+    <failure>
+      <message><![CDATA[One or more child tests had errors]]></message>
+    </failure>
+    <test-suite type="Assembly" id="1010" name="TestsAssembly.dll" fullname="/Users/emre/dev/ai/gp-oyun/SNAP/Library/ScriptAssemblies/TestsAssembly.dll" runstate="Runnable" testcasecount="7" result="Failed" site="Child" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:55Z" duration="0.160135" total="7" passed="4" failed="3" inconclusive="0" skipped="0" asserts="0">
+      <properties>
+        <property name="_PID" value="12843" />
+        <property name="_APPDOMAIN" value="Unity Child Domain" />
+        <property name="platform" value="PlayMode" />
+        <property name="EditorOnly" value="False" />
+      </properties>
+      <failure>
+        <message><![CDATA[One or more child tests had errors]]></message>
+      </failure>
+      <test-suite type="TestSuite" id="1011" name="GPOyun" fullname="GPOyun" runstate="Runnable" testcasecount="7" result="Failed" site="Child" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:55Z" duration="0.159564" total="7" passed="4" failed="3" inconclusive="0" skipped="0" asserts="0">
+        <properties />
+        <failure>
+          <message><![CDATA[One or more child tests had errors]]></message>
+        </failure>
+        <test-suite type="TestSuite" id="1012" name="Tests" fullname="GPOyun.Tests" runstate="Runnable" testcasecount="7" result="Failed" site="Child" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:55Z" duration="0.159329" total="7" passed="4" failed="3" inconclusive="0" skipped="0" asserts="0">
+          <properties />
+          <failure>
+            <message><![CDATA[One or more child tests had errors]]></message>
+          </failure>
+          <test-suite type="TestFixture" id="1001" name="ActivityDiagramTests" fullname="GPOyun.Tests.ActivityDiagramTests" classname="GPOyun.Tests.ActivityDiagramTests" runstate="Runnable" testcasecount="4" result="Failed" site="Child" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:55Z" duration="0.109261" total="4" passed="1" failed="3" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <failure>
+              <message><![CDATA[One or more child tests had errors]]></message>
+            </failure>
+            <test-case id="1004" name="Camera_Cooldown_PreventsRapidCapture" fullname="GPOyun.Tests.ActivityDiagramTests.Camera_Cooldown_PreventsRapidCapture" methodname="Camera_Cooldown_PreventsRapidCapture" classname="GPOyun.Tests.ActivityDiagramTests" runstate="Runnable" seed="1029555783" result="Failed" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:54Z" duration="0.012698" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[  Only one photo should be captured due to cooldown.
+  Expected: 1
+  But was:  0
+]]></message>
+                <stack-trace><![CDATA[at GPOyun.Tests.ActivityDiagramTests+<Camera_Cooldown_PreventsRapidCapture>d__8.MoveNext () [0x0005b] in /Users/emre/dev/ai/gp-oyun/SNAP/Assets/_Game/Tests/ActivityDiagramTests.cs:110
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in ./Library/PackageCache/com.unity.test-framework@76560ee600cb/UnityEngine.TestRunner/NUnitExtensions/Attributes/TestEnumerator.cs:44
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[Camera] SHUTTER: Click!
+[Camera] Cooldown: 1.5s remaining.
+]]></output>
+            </test-case>
+            <test-case id="1002" name="Camera_Raycast_HitsGround_StoresNullSubject" fullname="GPOyun.Tests.ActivityDiagramTests.Camera_Raycast_HitsGround_StoresNullSubject" methodname="Camera_Raycast_HitsGround_StoresNullSubject" classname="GPOyun.Tests.ActivityDiagramTests" runstate="Runnable" seed="2052080341" result="Failed" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:54Z" duration="0.003865" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[  Photo should be captured
+  Expected: 1
+  But was:  0
+]]></message>
+                <stack-trace><![CDATA[at GPOyun.Tests.ActivityDiagramTests+<Camera_Raycast_HitsGround_StoresNullSubject>d__6.MoveNext () [0x000f1] in /Users/emre/dev/ai/gp-oyun/SNAP/Assets/_Game/Tests/ActivityDiagramTests.cs:67
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in ./Library/PackageCache/com.unity.test-framework@76560ee600cb/UnityEngine.TestRunner/NUnitExtensions/Attributes/TestEnumerator.cs:44
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[Camera] SHUTTER: Click!
+]]></output>
+            </test-case>
+            <test-case id="1003" name="Camera_Raycast_HitsSubject_StoresValidSubject" fullname="GPOyun.Tests.ActivityDiagramTests.Camera_Raycast_HitsSubject_StoresValidSubject" methodname="Camera_Raycast_HitsSubject_StoresValidSubject" classname="GPOyun.Tests.ActivityDiagramTests" runstate="Runnable" seed="155158868" result="Failed" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:54Z" duration="0.001981" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <failure>
+                <message><![CDATA[  Photo should be captured
+  Expected: 1
+  But was:  0
+]]></message>
+                <stack-trace><![CDATA[at GPOyun.Tests.ActivityDiagramTests+<Camera_Raycast_HitsSubject_StoresValidSubject>d__7.MoveNext () [0x000d6] in /Users/emre/dev/ai/gp-oyun/SNAP/Assets/_Game/Tests/ActivityDiagramTests.cs:93
+at UnityEngine.TestTools.TestEnumerator+<Execute>d__7.MoveNext () [0x0003a] in ./Library/PackageCache/com.unity.test-framework@76560ee600cb/UnityEngine.TestRunner/NUnitExtensions/Attributes/TestEnumerator.cs:44
+]]></stack-trace>
+              </failure>
+              <output><![CDATA[[Camera] SHUTTER: Click!
+]]></output>
+            </test-case>
+            <test-case id="1005" name="NPCManager_CorrectlyRegistersAndMaintainsNPCs" fullname="GPOyun.Tests.ActivityDiagramTests.NPCManager_CorrectlyRegistersAndMaintainsNPCs" methodname="NPCManager_CorrectlyRegistersAndMaintainsNPCs" classname="GPOyun.Tests.ActivityDiagramTests" runstate="Runnable" seed="301910935" result="Passed" start-time="2026-05-19 23:27:54Z" end-time="2026-05-19 23:27:55Z" duration="0.083771" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+            </test-case>
+          </test-suite>
+          <test-suite type="TestFixture" id="1006" name="GlobalInputAndUISystemTests" fullname="GPOyun.Tests.GlobalInputAndUISystemTests" classname="GPOyun.Tests.GlobalInputAndUISystemTests" runstate="Runnable" testcasecount="3" result="Passed" start-time="2026-05-19 23:27:55Z" end-time="2026-05-19 23:27:55Z" duration="0.049306" total="3" passed="3" failed="0" inconclusive="0" skipped="0" asserts="0">
+            <properties />
+            <test-case id="1008" name="NewspaperBoardUI_Toggle_PausesAndResumesGame" fullname="GPOyun.Tests.GlobalInputAndUISystemTests.NewspaperBoardUI_Toggle_PausesAndResumesGame" methodname="NewspaperBoardUI_Toggle_PausesAndResumesGame" classname="GPOyun.Tests.GlobalInputAndUISystemTests" runstate="Runnable" seed="1621275567" result="Passed" start-time="2026-05-19 23:27:55Z" end-time="2026-05-19 23:27:55Z" duration="0.039321" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[NewspaperBoardUI] Opened.
+[NewspaperBoardUI] Closed.
+]]></output>
+            </test-case>
+            <test-case id="1009" name="UIStack_AdheresTo_MutualExclusionRules" fullname="GPOyun.Tests.GlobalInputAndUISystemTests.UIStack_AdheresTo_MutualExclusionRules" methodname="UIStack_AdheresTo_MutualExclusionRules" classname="GPOyun.Tests.GlobalInputAndUISystemTests" runstate="Runnable" seed="1234678415" result="Passed" start-time="2026-05-19 23:27:55Z" end-time="2026-05-19 23:27:55Z" duration="0.005437" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[[Gallery] Opened.
+[Gallery] Closed.
+[NewspaperBoardUI] Opened.
+[NewspaperBoardUI] Closed.
+[Settings] Opened.
+]]></output>
+            </test-case>
+            <test-case id="1007" name="UIStack_Initializes_WithoutExceptions" fullname="GPOyun.Tests.GlobalInputAndUISystemTests.UIStack_Initializes_WithoutExceptions" methodname="UIStack_Initializes_WithoutExceptions" classname="GPOyun.Tests.GlobalInputAndUISystemTests" runstate="Runnable" seed="762161161" result="Passed" start-time="2026-05-19 23:27:55Z" end-time="2026-05-19 23:27:55Z" duration="0.003792" asserts="0">
+              <properties>
+                <property name="_JOINTYPE" value="UnityCombinatorial" />
+                <property name="retryIteration" value="0" />
+                <property name="repeatIteration" value="0" />
+              </properties>
+              <output><![CDATA[Saving results to: /Users/emre/Library/Application Support/DefaultCompany/SNAP/TestResults.xml
+]]></output>
+            </test-case>
+          </test-suite>
+        </test-suite>
+      </test-suite>
+    </test-suite>
+  </test-suite>
+</test-run>
