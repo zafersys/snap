@@ -13,10 +13,12 @@ namespace GPOyun.NPC.Appraisal
     public class NPCAppraisalEngine : MonoBehaviour
     {
         private NPCPersonalityData _personality;
+        private Memory.NPCMemoryStream _memoryStream;
 
-        public void Initialize(NPCPersonalityData personality)
+        public void Initialize(NPCPersonalityData personality, Memory.NPCMemoryStream memoryStream = null)
         {
             _personality = personality;
+            _memoryStream = memoryStream;
         }
 
         public AppraisalResult Evaluate(Stimulus stimulus, EmotionType currentEmotion)
@@ -35,7 +37,16 @@ namespace GPOyun.NPC.Appraisal
                 case StimulusType.CameraShutter:
                 case StimulusType.CameraFlash:
                 case StimulusType.PlayerAimedCamera:
-                    // Evaluate based on Neuroticism and Agreeableness vs Extraversion
+                    // 1. Check Instincts First! (Overrides personality)
+                    if (_memoryStream != null && _memoryStream.HasInstinct("CameraShy"))
+                    {
+                        result.NewEmotion = EmotionType.Fearful;
+                        result.ArousalDelta = 1.0f;
+                        result.RelationshipDelta = -30;
+                        break;
+                    }
+
+                    // 2. Evaluate based on Neuroticism and Agreeableness vs Extraversion
                     if (_personality.Neuroticism > 0.6f || _personality.Agreeableness < 0.4f)
                     {
                         result.NewEmotion = EmotionType.Angry;

@@ -304,7 +304,7 @@ namespace GPOyun.UI
             btnTxt.color = Color.white;
             btnTxt.text = "CLOSE BOARD";
             btnTxt.alignment = TextAnchor.MiddleCenter;
-            var txtRect = btnTxtGo.AddComponent<RectTransform>();
+            var txtRect = btnTxtGo.GetComponent<RectTransform>();
             txtRect.anchorMin = Vector2.zero;
             txtRect.anchorMax = Vector2.one;
             txtRect.offsetMin = txtRect.offsetMax = Vector2.zero;

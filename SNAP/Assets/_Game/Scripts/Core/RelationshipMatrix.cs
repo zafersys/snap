@@ -14,6 +14,7 @@ namespace GPOyun.Core
         public static RelationshipMatrix Instance { get; private set; }
 
         private readonly Dictionary<string, int> _relationsTable = new();
+        private readonly Dictionary<string, List<string>> _opinions = new();
 
         private void Awake()
         {
@@ -24,15 +25,14 @@ namespace GPOyun.Core
         public void InitializeMatrix()
         {
             _relationsTable.Clear();
-            Debug.Log("[RelationshipMatrix] Initialized empty social network.");
+            _opinions.Clear();
+            Debug.Log("[RelationshipMatrix] Initialized empty social network with opinions.");
         }
 
-        /// <summary>Formats a symmetric key like 'npc_0_npc_1' ensuring idA < idB.</summary>
+        /// <summary>Formats a directional key. NPC A's opinion of NPC B.</summary>
         private string FormatKey(int idA, int idB)
         {
-            int low = Mathf.Min(idA, idB);
-            int high = Mathf.Max(idA, idB);
-            return $"npc_{low}_npc_{high}";
+            return $"npc_{idA}_to_npc_{idB}";
         }
 
         public int GetRelationship(int idA, int idB)
@@ -40,6 +40,22 @@ namespace GPOyun.Core
             if (idA == idB) return 100; // Self-relationship is perfect
             string key = FormatKey(idA, idB);
             return _relationsTable.TryGetValue(key, out int score) ? score : 0;
+        }
+
+        public void RecordOpinion(int idA, int idB, string opinion)
+        {
+            if (idA == idB) return;
+            string key = FormatKey(idA, idB); // Bi-directional shared memory for simplicity, or directional if we format differently. Let's do directional for thoughts!
+            string dirKey = $"npc_{idA}_thinks_of_{idB}";
+            if (!_opinions.ContainsKey(dirKey)) _opinions[dirKey] = new List<string>();
+            _opinions[dirKey].Add(opinion);
+            Debug.Log($"[Social Memory] NPC {idA} formed opinion of {idB}: '{opinion}'");
+        }
+
+        public List<string> GetOpinions(int idA, int idB)
+        {
+            string dirKey = $"npc_{idA}_thinks_of_{idB}";
+            return _opinions.TryGetValue(dirKey, out var ops) ? ops : new List<string>();
         }
 
         public void ModifyRelationship(int idA, int idB, int delta)
@@ -66,7 +82,7 @@ namespace GPOyun.Core
             // Resolve character names from scene npcs
             string nameA = $"NPC_{idA}";
             string nameB = $"NPC_{idB}";
-            var npcs = FindObjectsByType<NPC.NPCController>();
+            var npcs = FindObjectsByType<NPC.NPCController>(FindObjectsInactive.Exclude);
             foreach (var npc in npcs)
             {
                 if (npc.NpcId == idA) nameA = npc.NpcName;
@@ -77,7 +93,7 @@ namespace GPOyun.Core
             if (oldScore < 86 && newScore >= 86)
             {
                 JournalManager.Instance.AddObservation(
-                    $"[{nameA}] [BEST-FRIENDS] <3 [{nameB}]",
+                    $"[{nameA}] thinks [{nameB}] is a [BEST-FRIEND] <3",
                     new Color(0.9f, 0.75f, 0.3f) // Golden color
                 );
             }
@@ -85,7 +101,7 @@ namespace GPOyun.Core
             else if (oldScore < 50 && newScore >= 50)
             {
                 JournalManager.Instance.AddObservation(
-                    $"[{nameA}] [FRIENDS] :) [{nameB}]",
+                    $"[{nameA}] thinks of [{nameB}] as a [FRIEND] :)",
                     VisualUtils.CobaltBlue
                 );
             }
@@ -93,7 +109,7 @@ namespace GPOyun.Core
             else if (oldScore > -50 && newScore <= -50)
             {
                 JournalManager.Instance.AddObservation(
-                    $"[{nameA}] [RIVALS] >:( [{nameB}]",
+                    $"[{nameA}] hates [{nameB}]! [RIVALS] >:(",
                     VisualUtils.Terracotta
                 );
             }
@@ -101,10 +117,41 @@ namespace GPOyun.Core
             else if (oldScore <= -50 && newScore > -50)
             {
                 JournalManager.Instance.AddObservation(
-                    $"[{nameA}] [PEACE] [{nameB}]",
+                    $"[{nameA}] forgave [{nameB}] [PEACE]",
                     VisualUtils.StuccoWhite
                 );
             }
+        }
+
+        public void PrintGossipReport()
+        {
+            string report = "=== GOSSIP REPORT ===\n";
+            var npcs = FindObjectsByType<NPC.NPCController>(FindObjectsInactive.Exclude);
+
+            foreach (var npc in npcs)
+            {
+                report += $"\n[{npc.NpcName}]'s Thoughts:\n";
+                foreach (var other in npcs)
+                {
+                    if (npc == other) continue;
+                    
+                    int score = GetRelationship(npc.NpcId, other.NpcId);
+                    if (score == 0) continue; // Skip neutral
+                    
+                    string thoughts = string.Join(" | ", GetOpinions(npc.NpcId, other.NpcId));
+                    if (string.IsNullOrEmpty(thoughts)) thoughts = "No specific thoughts.";
+
+                    string relationText = "Neutral";
+                    if (score > 80) relationText = "Loves";
+                    else if (score > 40) relationText = "Likes";
+                    else if (score < -80) relationText = "Hates";
+                    else if (score < -40) relationText = "Dislikes";
+
+                    report += $"  -> {other.NpcName} ({score}): {relationText} - \"{thoughts}\"\n";
+                }
+            }
+            report += "=====================\n";
+            Debug.Log(report);
         }
 
         /// <summary>
@@ -214,8 +261,10 @@ namespace GPOyun.Core
                     delta = Random.Range(-10, 11);
                 }
 
-                // Apply shifts
-                ModifyRelationship(subjectNpc.NpcId, other.NpcId, delta);
+                // Apply shifts: The Other NPC's opinion of the Subject changes based on the news
+                ModifyRelationship(other.NpcId, subjectNpc.NpcId, delta);
+                if (delta > 10) RecordOpinion(other.NpcId, subjectNpc.NpcId, $"I read the paper today. {subjectNpc.NpcName} is amazing!");
+                if (delta < -10) RecordOpinion(other.NpcId, subjectNpc.NpcId, $"Did you see the news? {subjectNpc.NpcName} is a disgrace.");
 
                 // Dynamic Player-NPC relationship adjustment:
                 // Positive news outcomes raise their opinion of you (the journalist), negative drops it

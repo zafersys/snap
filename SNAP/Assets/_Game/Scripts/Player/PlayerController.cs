@@ -53,6 +53,10 @@ namespace GPOyun.Player
             {
                 GPOyun.UI.HUDManager.Instance.relationshipOverlayActive = keyboard.tabKey.isPressed;
             }
+            if (keyboard.tabKey.wasPressedThisFrame && RelationshipMatrix.Instance != null)
+            {
+                RelationshipMatrix.Instance.PrintGossipReport();
+            }
 
             // ── FSM STATE PAUSED CHECK ────────────────────────────────────
             if (GameManager.Instance != null && GameManager.Instance.CurrentState == GameManager.GameState.Paused)

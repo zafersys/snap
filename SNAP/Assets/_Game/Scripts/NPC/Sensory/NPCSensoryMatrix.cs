@@ -48,7 +48,7 @@ namespace GPOyun.NPC.Sensory
                     {
                         // Check if player is aiming camera
                         // Assuming PlayerController has a way to expose this or we check CameraController
-                        var camCtrl = FindAnyObjectByType<Camera.CameraController>();
+                        var camCtrl = FindAnyObjectByType<GPOyun.CameraSystem.CameraController>();
                         if (camCtrl != null && camCtrl.IsViewfinderActive())
                         {
                             var stimulus = new Stimulus(StimulusType.PlayerAimedCamera, player.transform.position, 0, 1f);

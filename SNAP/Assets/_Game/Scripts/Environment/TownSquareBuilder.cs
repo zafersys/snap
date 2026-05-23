@@ -61,11 +61,16 @@ namespace GPOyun.Environment
             var towerSubject = tower.AddComponent<PhotoSubject>();
             towerSubject.PrimaryCategory = GPOyun.Newspaper.NewsCategory.Global;
 
-            // 5. CENTRAL FOUNTAIN & PLAZA DETAILS
             GameObject fBase = CreatePrimitive(PrimitiveType.Cylinder, "Fountain_Base", Vector3.zero, new Vector3(5, 0.4f, 5));
             VisualUtils.ApplyAesthetic(fBase, VisualUtils.SlateGrey);
             GameObject water = CreatePrimitive(PrimitiveType.Cylinder, "Water", new Vector3(0, 0.3f, 0), new Vector3(4.5f, 0.1f, 4.5f));
             VisualUtils.ApplyAesthetic(water, VisualUtils.FountainBlue, 0.9f);
+
+            var fountainObstacle = fBase.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            fountainObstacle.shape = UnityEngine.AI.NavMeshObstacleShape.Capsule;
+            fountainObstacle.carving = true;
+            fountainObstacle.radius = 2.5f;
+            fountainObstacle.height = 1f;
 
             // Benches around fountain
             CreateBench(new Vector3(0, 0.5f, 6.0f), 0);
@@ -76,6 +81,10 @@ namespace GPOyun.Environment
             // 6. NEWSPAPER BOARD (Modern accent)
             GameObject board = CreatePrimitive(PrimitiveType.Cube, "NewspaperBoard", new Vector3(10, 1.5f, -6), new Vector3(0.3f, 3f, 5f));
             VisualUtils.ApplyAesthetic(board, VisualUtils.WoodBrown);
+
+            var boardObstacle = board.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            boardObstacle.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
+            boardObstacle.carving = true;
 
             // 7. FLOWER POTS (Scattered life)
             CreateFlowerPot(new Vector3(-8, 0.5f, 8));
@@ -113,6 +122,13 @@ namespace GPOyun.Environment
             // Windows (Simple recessed cubes)
             CreateWindow(container.transform, new Vector3(size.x/3f, size.y*0.6f, size.z/2f + 0.05f));
             CreateWindow(container.transform, new Vector3(-size.x/3f, size.y*0.6f, size.z/2f + 0.05f));
+
+            // Dynamic Collision: Add NavMeshObstacle so NPCs don't walk through walls!
+            var nmo = container.AddComponent<UnityEngine.AI.NavMeshObstacle>();
+            nmo.shape = UnityEngine.AI.NavMeshObstacleShape.Box;
+            nmo.carving = true;
+            nmo.size = size;
+            nmo.center = new Vector3(0, size.y / 2f, 0);
         }
 
         private void CreateWindow(Transform parent, Vector3 pos)

@@ -123,23 +123,35 @@ namespace GPOyun.UI
                 }
                 else
                 {
-                    for (int i = 0; i < npcs.Length; i++)
+                    foreach (var npc in npcs)
                     {
-                        for (int j = i + 1; j < npcs.Length; j++)
+                        var loves = new List<string>();
+                        var friends = new List<string>();
+                        var rivals = new List<string>();
+
+                        foreach (var other in npcs)
                         {
-                            int idA = npcs[i].NpcId;
-                            int idB = npcs[j].NpcId;
-                            int score = RelationshipMatrix.Instance.GetRelationship(idA, idB);
-
-                            string status = "[NEUTRAL]";
-                            string colorTag = "#9E9E9E"; // Gray
-
-                            if (score >= 86) { status = "[BEST-FRIENDS] <3"; colorTag = "#E6C03C"; } // Gold
-                            else if (score >= 50) { status = "[FRIENDS] :)"; colorTag = "#327CB2"; } // Blue
-                            else if (score <= -50) { status = "[RIVALS] >:("; colorTag = "#D95933"; } // Terracotta
-
-                            sb.AppendLine($"[NPC_{idA}] ({score}) -> <color={colorTag}>{status}</color> -> [NPC_{idB}]");
+                            if (npc == other) continue;
+                            int score = RelationshipMatrix.Instance.GetRelationship(npc.NpcId, other.NpcId);
+                            
+                            if (score >= 86) loves.Add($"{other.NpcName} ({score})");
+                            else if (score >= 50) friends.Add($"{other.NpcName} ({score})");
+                            else if (score <= -50) rivals.Add($"{other.NpcName} ({score})");
                         }
+
+                        if (loves.Count > 0 || friends.Count > 0 || rivals.Count > 0)
+                        {
+                            sb.AppendLine($"<color=#E6C03C><b>{npc.NpcName}</b></color>");
+                            if (loves.Count > 0) sb.AppendLine($"  <color=#FF69B4>Loves: </color> {string.Join(", ", loves)}");
+                            if (friends.Count > 0) sb.AppendLine($"  <color=#327CB2>Friends:</color> {string.Join(", ", friends)}");
+                            if (rivals.Count > 0) sb.AppendLine($"  <color=#D95933>Rivals: </color> {string.Join(", ", rivals)}");
+                            sb.AppendLine();
+                        }
+                    }
+
+                    if (sb.Length < 100) // Rough check if nothing was added
+                    {
+                        sb.AppendLine("\n[ NO STRONG BONDS FORMED YET ]");
                     }
                 }
                 relationshipListText.text = sb.ToString();

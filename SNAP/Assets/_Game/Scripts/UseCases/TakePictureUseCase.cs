@@ -53,7 +53,7 @@ namespace GPOyun.UseCases
             Destroy(rt);
 
             // Create directories and write physical PNG on disk
-            string dir = Path.Combine(Application.dataPath, "_Game/CapturedPhotos");
+            string dir = Path.Combine(Application.dataPath, "_Game", "CapturedPhotos");
             if (!Directory.Exists(dir))
             {
                 Directory.CreateDirectory(dir);
