@@ -44,4 +44,9 @@ ExportedObj/
 packages/
 *.nupkg
 
+# Captured photos
+[Cc]aptured[Pp]hotos/
+[Cc]aptured[Pp]hotos.meta
+
 DONE
+
