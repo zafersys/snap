@@ -35,10 +35,12 @@ namespace GPOyun.InputSystem
             var keyboard = Keyboard.current;
             if (keyboard == null) return;
 
+            bool escapePressedThisFrame = keyboard.escapeKey?.wasPressedThisFrame ?? false;
+
             // Gracefully yield key controls if the Photo Review modal is active
             if (PhotoReviewUI.Instance != null && PhotoReviewUI.Instance.IsOpen)
             {
-                if (keyboard.escapeKey.wasPressedThisFrame)
+                if (escapePressedThisFrame)
                 {
                     PhotoReviewUI.Instance.Hide();
                 }
@@ -48,6 +50,8 @@ namespace GPOyun.InputSystem
             // Diagnostic: Log any key pressed
             foreach (var key in keyboard.allKeys)
             {
+                if (key == null) continue; // 54. satırdaki NullReference hatasını çözen kısım
+
                 if (key.wasPressedThisFrame)
                 {
                     Debug.Log($"[GlobalInputListener] Diagnostic - Key pressed: {key.name}");
@@ -55,7 +59,7 @@ namespace GPOyun.InputSystem
             }
 
             // ── ESC KEY (Close all panels or toggle settings) ───────────────────────────────────
-            bool escPressed = keyboard.escapeKey.isPressed;
+            bool escPressed = keyboard.escapeKey?.isPressed ?? false;
             if (escPressed && !_escWasPressed)
             {
                 _escWasPressed = true;
@@ -102,7 +106,7 @@ namespace GPOyun.InputSystem
             }
 
             // ── G KEY (Photo Gallery Screen) ────────────────────────────────
-            bool gPressed = keyboard.gKey.isPressed;
+            bool gPressed = keyboard.gKey?.isPressed ?? false;
             if (gPressed && !_gWasPressed)
             {
                 _gWasPressed = true;
@@ -122,7 +126,7 @@ namespace GPOyun.InputSystem
             }
 
             // ── J KEY (Observational Journal Screen) ─────────────────────────
-            bool jPressed = keyboard.jKey.isPressed;
+            bool jPressed = keyboard.jKey?.isPressed ?? false;
             if (jPressed && !_jWasPressed)
             {
                 _jWasPressed = true;
@@ -141,7 +145,7 @@ namespace GPOyun.InputSystem
             }
 
             // ── B KEY (Newspaper Board UI) ───────────────────────────────────
-            bool bPressed = keyboard.bKey.isPressed;
+            bool bPressed = keyboard.bKey?.isPressed ?? false;
             if (bPressed && !_bWasPressed)
             {
                 _bWasPressed = true;
